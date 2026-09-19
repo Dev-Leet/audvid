@@ -11,7 +11,7 @@ class CameraControllerService {
   int? get previewWidthPx => _controller?.value.previewSize?.width.toInt();
   CameraController? get rawController => _controller; // exposed for the live preview widget
 
-  Future<bool> activate() async {
+  Future<bool> activate({ResolutionPreset resolution = ResolutionPreset.medium}) async {
     try {
       final cameras = await availableCameras().timeout(
         const Duration(seconds: 5),
@@ -21,7 +21,7 @@ class CameraControllerService {
         logger.warning('CameraControllerService', 'No cameras available');
         return false;
       }
-      _controller = CameraController(cameras.first, ResolutionPreset.medium, enableAudio: false);
+      _controller = CameraController(cameras.first, resolution, enableAudio: false);
       await _controller!.initialize().timeout(
         const Duration(seconds: 8),
         onTimeout: () => throw TimeoutException('Camera initialize() timed out'),

@@ -1,42 +1,7 @@
-- `[x]` Scaffold Project Structure
-  - `[x]` Update `pubspec.yaml`
-  - `[x]` Create `assets/config/` and `assets/models/` directories
-  - `[x]` Create configuration files (`coco_labelmap.txt`, `yamnet_class_map.csv`, `kinetics600_labels.txt`)
-- `[x]` Implement Core & Utils
-  - `[x]` `lib/core/models/evidence.dart`
-  - `[x]` `lib/core/models/test_config.dart`
-  - `[x]` `lib/core/utils/logger.dart`
-  - `[x]` `lib/core/utils/json_pretty_printer.dart`
-- `[x]` Implement Audio Services
-  - `[x]` `lib/services/audio/mic_capture_service.dart` (Audit fixes T-10, T-19)
-  - `[x]` `lib/services/audio/audio_preprocessing.dart`
-  - `[x]` `lib/services/audio/yamnet_model.dart` (Audit fixes T-11, T-12, CSV parsing)
-  - `[x]` `lib/services/audio/audio_evidence_processor.dart`
-- `[x]` Implement Vision Services
-  - `[x]` `lib/services/vision/camera_controller_service.dart`
-  - `[x]` `lib/services/vision/vision_preprocessing.dart`
-  - `[x]` `lib/services/vision/efficientdet_model.dart`
-  - `[x]` `lib/services/vision/object_tracker.dart` (Audit fix T-13)
-  - `[x]` `lib/services/vision/behavioral_feature_extractor.dart`
-  - `[x]` `lib/services/vision/movinet_stream_model.dart` (Audit fix Dtype validation, label offset)
-  - `[x]` `lib/services/vision/visual_evidence_processor.dart` (Audit fix replacing 'shouting')
-- `[x]` Implement Controllers
-  - `[x]` `lib/controllers/perf_stats.dart`
-  - `[x]` `lib/controllers/audio_test_controller.dart`
-  - `[x]` `lib/controllers/vision_test_controller.dart` (Audit fixes T-2, T-3, T-4, T-6, T-7, T-8)
-  - `[x]` `lib/controllers/combined_test_controller.dart` (Audit fixes T-16, T-17)
-- `[x]` Implement UI Widgets
-  - `[x]` `lib/widgets/evidence_json_panel.dart`
-  - `[x]` `lib/widgets/audio_level_meter.dart`
-  - `[x]` `lib/widgets/detection_overlay_painter.dart`
-  - `[x]` `lib/widgets/model_status_chip.dart`
-  - `[x]` `lib/widgets/perf_stats_bar.dart`
-- `[x]` Implement Screens & Main
-  - `[x]` `lib/screens/mode_select_screen.dart` (Audit fix T-9)
-  - `[x]` `lib/screens/audio_test_screen.dart`
-  - `[x]` `lib/screens/vision_test_screen.dart` (Audit fix T-15)
-  - `[x]` `lib/screens/combined_test_screen.dart` (Audit fix T-15, T-18)
-  - `[x]` `lib/main.dart` (Audit fix T-14)
-- `[x]` Verification
-  - `[x]` Run `flutter pub get`
-  - `[x]` Run Dart analysis
+- `[x]` Update `CameraControllerService`
+  - `[x]` Add `ResolutionPreset` parameter to `activate()` defaulting to `medium`.
+  - `[x]` Update `CameraController` initialization to use the passed `ResolutionPreset`.
+- `[x]` Update `VisionCdTestController`
+  - `[x]` Call `camera.activate(resolution: ResolutionPreset.max)`.
+- `[x]` Run `flutter analyze`
+- `[x]` Run `flutter build apk --debug`

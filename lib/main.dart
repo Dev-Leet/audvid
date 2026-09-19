@@ -3,6 +3,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'services/audio/yamnet_model.dart';
 import 'services/vision/efficientdet_model.dart';
 import 'services/vision/movinet_stream_model.dart';
+import 'services/vision/face_detection_service.dart';
+import 'services/vision/pose_detection_service.dart';
 import 'screens/mode_select_screen.dart';
 
 void main() {
@@ -33,6 +35,8 @@ class _BootstrapScreenState extends State<_BootstrapScreen> {
   final yamnet = YamnetModel();
   final efficientDet = EfficientDetModel();
   final movinet = MovinetStreamModel();
+  final faceService = FaceDetectionService();
+  final poseService = PoseDetectionService();
 
   String _loadingText = 'Requesting permissions...';
 
@@ -46,21 +50,14 @@ class _BootstrapScreenState extends State<_BootstrapScreen> {
     await Permission.microphone.request();
     await Permission.camera.request();
 
-    // AUDIT FIX (T-14): the three loads previously ran SEQUENTIALLY with
-    // no timeout — a single hung/corrupted .tflite asset would block the
-    // loading screen indefinitely, denying access to the other two models
-    // even if they were perfectly fine. Now loaded in PARALLEL, each with
-    // an independent timeout, so one bad asset can't block the others.
-    setState(() => _loadingText = 'Loading models in parallel...');
+    setState(() => _loadingText = 'Loading all models in parallel...');
 
     await Future.wait([
-      yamnet.load().timeout(const Duration(seconds: 15), onTimeout: () {
-        // load() already catches its own errors internally and leaves
-        // isLoaded == false; this timeout just prevents an indefinite hang
-        // if Interpreter.fromAsset itself never returns.
-      }),
+      yamnet.load().timeout(const Duration(seconds: 15), onTimeout: () {}),
       efficientDet.load().timeout(const Duration(seconds: 15), onTimeout: () {}),
       movinet.load().timeout(const Duration(seconds: 15), onTimeout: () {}),
+      faceService.load().timeout(const Duration(seconds: 15), onTimeout: () {}),
+      poseService.load().timeout(const Duration(seconds: 15), onTimeout: () {}),
     ]);
 
     if (!mounted) return;
@@ -71,6 +68,8 @@ class _BootstrapScreenState extends State<_BootstrapScreen> {
           yamnet: yamnet,
           efficientDet: efficientDet,
           movinet: movinet,
+          faceService: faceService,
+          poseService: poseService,
         ),
       ),
     );

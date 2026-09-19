@@ -3,27 +3,28 @@ import 'package:flutter/material.dart';
 import '../services/audio/yamnet_model.dart';
 import '../services/vision/efficientdet_model.dart';
 import '../services/vision/movinet_stream_model.dart';
+import '../services/vision/face_detection_service.dart';
+import '../services/vision/pose_detection_service.dart';
 import '../widgets/model_status_chip.dart';
 import 'audio_test_screen.dart';
 import 'vision_test_screen.dart';
+import 'vision_cd_test_screen.dart';
 import 'combined_test_screen.dart';
 
-/// AUDIT FIX (T-9): converted from StatelessWidget to StatefulWidget with
-/// a periodic re-check of `isLoaded` while this screen is visible.
-/// Previously the chips were computed once at build time and never
-/// updated — returning here after a model was disposed (e.g. the T-2 bug,
-/// now fixed, or any future model failure) would keep showing a stale
-/// green chip for a model that is actually dead.
 class ModeSelectScreen extends StatefulWidget {
   final YamnetModel yamnet;
   final EfficientDetModel efficientDet;
   final MovinetStreamModel movinet;
+  final FaceDetectionService faceService;
+  final PoseDetectionService poseService;
 
   const ModeSelectScreen({
     super.key,
     required this.yamnet,
     required this.efficientDet,
     required this.movinet,
+    required this.faceService,
+    required this.poseService,
   });
 
   @override
@@ -84,6 +85,10 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> with WidgetsBinding
                     label: 'EfficientDet-Lite0 (Vision Tier A)', isLoaded: widget.efficientDet.isLoaded),
                 ModelStatusChip(
                     label: 'MoViNet-Stream (Vision Tier B / Option 2)', isLoaded: widget.movinet.isLoaded),
+                ModelStatusChip(
+                    label: 'ML Kit Face (Vision Tier C)', isLoaded: widget.faceService.isLoaded),
+                ModelStatusChip(
+                    label: 'ML Kit Pose (Vision Tier D)', isLoaded: widget.poseService.isLoaded),
               ],
             ),
             const SizedBox(height: 32),
@@ -113,6 +118,18 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> with WidgetsBinding
                 MaterialPageRoute(
                     builder: (_) =>
                         VisionTestScreen(efficientDet: widget.efficientDet, movinet: widget.movinet)),
+              ).then((_) { if (mounted) setState(() {}); }),
+            ),
+            const SizedBox(height: 12),
+            _ModeButton(
+              icon: Icons.face,
+              label: 'Vision Test (Face & Pose ONLY)',
+              enabled: widget.faceService.isLoaded || widget.poseService.isLoaded,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        VisionCdTestScreen(faceService: widget.faceService, poseService: widget.poseService)),
               ).then((_) { if (mounted) setState(() {}); }),
             ),
             const SizedBox(height: 12),

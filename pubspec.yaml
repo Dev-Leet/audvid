@@ -16,6 +16,9 @@ dependencies:
   battery_plus: ^7.1.1     # for the synthetic-battery UI to mimic real reads if desired
   image: ^4.2.0            # YUV->RGB conversion (matches main app's vision_preprocessing.dart)
   path_provider: ^2.1.4    # AUDIT FIX (T-1): was imported by mic_capture_service.dart but never declared
+  google_mlkit_face_detection: ^0.15.1
+  google_mlkit_pose_detection: ^0.16.1
+  google_mlkit_commons: ^0.13.0
 
 dev_dependencies:
   flutter_test:
