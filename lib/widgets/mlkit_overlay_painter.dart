@@ -1,38 +1,66 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 class MlkitOverlayPainter extends CustomPainter {
   final List<Face> faces;
   final Pose? pose;
+  final Size? imageSize;
+  final InputImageRotation? rotation;
+  final CameraLensDirection? lensDirection;
 
-  MlkitOverlayPainter({required this.faces, required this.pose});
+  MlkitOverlayPainter({
+    required this.faces,
+    required this.pose,
+    this.imageSize,
+    this.rotation,
+    this.lensDirection,
+  });
+
+  double translateX(double x, Size canvasSize) {
+    if (imageSize == null || rotation == null || lensDirection == null) return x;
+    final isRotated = rotation == InputImageRotation.rotation90deg || rotation == InputImageRotation.rotation270deg;
+    // The image size provided by metadata is the unrotated sensor size (e.g. 1600x1200).
+    // ML Kit returns coordinates relative to the ROTATED image (1200x1600).
+    final scaledWidth = isRotated ? imageSize!.height : imageSize!.width;
+    final scaleX = canvasSize.width / scaledWidth;
+    
+    // Front camera is horizontally mirrored by the preview
+    if (lensDirection == CameraLensDirection.front) {
+      return canvasSize.width - (x * scaleX);
+    }
+    return x * scaleX;
+  }
+
+  double translateY(double y, Size canvasSize) {
+    if (imageSize == null || rotation == null || lensDirection == null) return y;
+    final isRotated = rotation == InputImageRotation.rotation90deg || rotation == InputImageRotation.rotation270deg;
+    final scaledHeight = isRotated ? imageSize!.width : imageSize!.height;
+    final scaleY = canvasSize.height / scaledHeight;
+    return y * scaleY;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Note: This draws the raw bounding boxes assuming the camera preview
-    // is completely unscaled/unrotated. In a true production app, you would
-    // apply an affine transform here to map the image coordinates to the
-    // screen coordinates (considering crop, scale, and device rotation).
-    // For this tester, it provides enough visual confirmation that the models
-    // are firing.
-    
-    // Draw Faces
     final facePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..color = Colors.blueAccent;
 
     for (final face in faces) {
-      // Scale bounding box to canvas size
-      // ML Kit usually outputs coordinates matching the absolute image resolution.
-      // E.g., if the image is 480x640, coordinates will be in that range.
-      // We do a naive scale here for the tester UI.
+      final left = translateX(face.boundingBox.left, size);
+      final top = translateY(face.boundingBox.top, size);
+      final right = translateX(face.boundingBox.right, size);
+      final bottom = translateY(face.boundingBox.bottom, size);
+
       final rect = Rect.fromLTRB(
-        face.boundingBox.left,
-        face.boundingBox.top,
-        face.boundingBox.right,
-        face.boundingBox.bottom,
+        min(left, right),
+        min(top, bottom),
+        max(left, right),
+        max(top, bottom),
       );
       
       canvas.drawRect(rect, facePaint);
@@ -42,7 +70,6 @@ class MlkitOverlayPainter extends CustomPainter {
       }
     }
 
-    // Draw Pose
     if (pose != null) {
       final pointPaint = Paint()
         ..style = PaintingStyle.fill
@@ -53,39 +80,39 @@ class MlkitOverlayPainter extends CustomPainter {
         ..strokeWidth = 2.0
         ..color = Colors.orangeAccent;
 
-      // Draw all landmarks
       pose!.landmarks.forEach((_, landmark) {
-        canvas.drawCircle(Offset(landmark.x, landmark.y), 3.0, pointPaint);
+        canvas.drawCircle(Offset(translateX(landmark.x, size), translateY(landmark.y, size)), 3.0, pointPaint);
       });
       
-      // Draw a few key skeleton lines (Left side)
-      _drawLine(canvas, pose!, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle, linePaint);
+      void drawLine(PoseLandmarkType t1, PoseLandmarkType t2) {
+        final l1 = pose!.landmarks[t1];
+        final l2 = pose!.landmarks[t2];
+        if (l1 != null && l2 != null && l1.likelihood > 0.5 && l2.likelihood > 0.5) {
+          canvas.drawLine(
+            Offset(translateX(l1.x, size), translateY(l1.y, size)),
+            Offset(translateX(l2.x, size), translateY(l2.y, size)),
+            linePaint
+          );
+        }
+      }
+
+      drawLine(PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow);
+      drawLine(PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist);
+      drawLine(PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip);
+      drawLine(PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee);
+      drawLine(PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle);
       
-      // Right side
-      _drawLine(canvas, pose!, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle, linePaint);
+      drawLine(PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow);
+      drawLine(PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist);
+      drawLine(PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip);
+      drawLine(PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee);
+      drawLine(PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle);
       
-      // Center
-      _drawLine(canvas, pose!, PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder, linePaint);
-      _drawLine(canvas, pose!, PoseLandmarkType.leftHip, PoseLandmarkType.rightHip, linePaint);
+      drawLine(PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder);
+      drawLine(PoseLandmarkType.leftHip, PoseLandmarkType.rightHip);
     }
   }
   
-  void _drawLine(Canvas canvas, Pose pose, PoseLandmarkType t1, PoseLandmarkType t2, Paint paint) {
-    final l1 = pose.landmarks[t1];
-    final l2 = pose.landmarks[t2];
-    if (l1 != null && l2 != null && l1.likelihood > 0.5 && l2.likelihood > 0.5) {
-      canvas.drawLine(Offset(l1.x, l1.y), Offset(l2.x, l2.y), paint);
-    }
-  }
-
   void _drawLabel(Canvas canvas, String text, Offset offset, Color color) {
     final painter = TextPainter(
       text: TextSpan(

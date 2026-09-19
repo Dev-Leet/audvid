@@ -67,8 +67,8 @@ class _CombinedTestScreenState extends State<CombinedTestScreen> {
       audioController: audioController,
       visionController: visionController,
     );
-    combinedController.mergedFeedStream.listen((feed) => setState(() => _mergedFeed = feed));
-    combinedController.statusStream.listen((s) => setState(() => _status = s));
+    combinedController.mergedFeedStream.listen((feed) { if (mounted) setState(() => _mergedFeed = feed); });
+    combinedController.statusStream.listen((s) { if (mounted) setState(() => _status = s); });
   }
 
   Future<void> _toggle() async {
@@ -81,7 +81,7 @@ class _CombinedTestScreenState extends State<CombinedTestScreen> {
         includeVisionTierB: _includeVisionB,
       );
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override

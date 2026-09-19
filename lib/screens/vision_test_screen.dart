@@ -57,12 +57,12 @@ class _VisionTestScreenState extends State<VisionTestScreen> {
       processor: VisualEvidenceProcessor(actionProxyConfidenceCap: cfg.actionProxyConfidenceCap),
       config: cfg,
     );
-    controller.detectionsStream.listen((d) => setState(() => _detections = d));
-    controller.tracksStream.listen((t) => setState(() => _tracks = t));
-    controller.tierAEvidenceStream.listen((e) => setState(() => _tierAEvidence = e));
-    controller.actionResultsStream.listen((r) => setState(() => _actionResults = r));
-    controller.tierBEvidenceStream.listen((e) => setState(() => _tierBEvidence = e));
-    controller.statusStream.listen((s) => setState(() => _status = s));
+    controller.detectionsStream.listen((d) { if (mounted) setState(() => _detections = d); });
+    controller.tracksStream.listen((t) { if (mounted) setState(() => _tracks = t); });
+    controller.tierAEvidenceStream.listen((e) { if (mounted) setState(() => _tierAEvidence = e); });
+    controller.actionResultsStream.listen((r) { if (mounted) setState(() => _actionResults = r); });
+    controller.tierBEvidenceStream.listen((e) { if (mounted) setState(() => _tierBEvidence = e); });
+    controller.statusStream.listen((s) { if (mounted) setState(() => _status = s); });
   }
 
   Future<void> _toggleRunning() async {
@@ -76,7 +76,7 @@ class _VisionTestScreenState extends State<VisionTestScreen> {
       controller.simulatedUserSpeedMps = _simulatedSpeed;
       await controller.start();
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override

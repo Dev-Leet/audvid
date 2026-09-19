@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart' show Size;
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -29,6 +30,11 @@ class VisionCdTestController {
   // Expose the raw outputs for overlay drawing
   final _facesController = StreamController<List<Face>>.broadcast();
   final _poseController = StreamController<Pose?>.broadcast();
+
+  // Expose ML Kit image metadata for coordinate scaling
+  Size? imageSize;
+  InputImageRotation? imageRotation;
+  CameraLensDirection? lensDirection;
 
   Stream<Evidence> get tierCEvidenceStream => _tierCEvidenceController.stream;
   Stream<Evidence> get tierDEvidenceStream => _tierDEvidenceController.stream;
@@ -153,6 +159,10 @@ class VisionCdTestController {
       _statusController.add('Failed to convert camera frame to InputImage.');
       return;
     }
+
+    imageSize = inputImage.metadata?.size;
+    imageRotation = inputImage.metadata?.rotation;
+    lensDirection = camera.rawController!.description.lensDirection;
 
     if (_effectiveTierC) {
       final cStart = DateTime.now();

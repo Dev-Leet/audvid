@@ -32,12 +32,12 @@ class _AudioTestScreenState extends State<AudioTestScreen> {
       processor: AudioEvidenceProcessor(),
       micCapture: MicCaptureService(),
     );
-    controller.rawResultsStream.listen((r) => setState(() => _rawResults = r));
-    controller.evidenceStream.listen((e) => setState(() {
+    controller.rawResultsStream.listen((r) { if (mounted) setState(() => _rawResults = r); });
+    controller.evidenceStream.listen((e) { if (mounted) setState(() {
           _evidenceHistory = [e, ..._evidenceHistory].take(10).toList();
-        }));
-    controller.levelStream.listen((l) => setState(() => _level = l));
-    controller.statusStream.listen((s) => setState(() => _status = s));
+        }); });
+    controller.levelStream.listen((l) { if (mounted) setState(() => _level = l); });
+    controller.statusStream.listen((s) { if (mounted) setState(() => _status = s); });
   }
 
   @override

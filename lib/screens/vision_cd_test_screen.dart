@@ -46,11 +46,11 @@ class _VisionCdTestScreenState extends State<VisionCdTestScreen> {
       faceProcessor: FaceEvidenceProcessor(),
       poseProcessor: PoseEvidenceProcessor(),
     );
-    controller.facesStream.listen((f) => setState(() => _faces = f));
-    controller.poseStream.listen((p) => setState(() => _pose = p));
-    controller.tierCEvidenceStream.listen((e) => setState(() => _tierCEvidence = e));
-    controller.tierDEvidenceStream.listen((e) => setState(() => _tierDEvidence = e));
-    controller.statusStream.listen((s) => setState(() => _status = s));
+    controller.facesStream.listen((f) { if (mounted) setState(() => _faces = f); });
+    controller.poseStream.listen((p) { if (mounted) setState(() => _pose = p); });
+    controller.tierCEvidenceStream.listen((e) { if (mounted) setState(() => _tierCEvidence = e); });
+    controller.tierDEvidenceStream.listen((e) { if (mounted) setState(() => _tierDEvidence = e); });
+    controller.statusStream.listen((s) { if (mounted) setState(() => _status = s); });
   }
 
   Future<void> _toggleRunning() async {
@@ -61,7 +61,7 @@ class _VisionCdTestScreenState extends State<VisionCdTestScreen> {
       controller.setTierD(_tierDEnabled);
       await controller.start();
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -111,16 +111,39 @@ class _VisionCdTestScreenState extends State<VisionCdTestScreen> {
             ),
             const SizedBox(height: 12),
             if (cameraService.isActive && cameraService.rawController != null)
-              AspectRatio(
-                aspectRatio: cameraService.rawController!.value.aspectRatio,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraPreview(cameraService.rawController!),
-                    CustomPaint(
-                      painter: MlkitOverlayPainter(faces: _faces, pose: _pose),
+              Container(
+                height: MediaQuery.of(context).size.height * 0.5, // Make preview taller
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade800, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: InteractiveViewer(
+                    panEnabled: true,
+                    minScale: 1.0,
+                    maxScale: 5.0,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: cameraService.rawController!.value.aspectRatio,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CameraPreview(cameraService.rawController!),
+                            CustomPaint(
+                              painter: MlkitOverlayPainter(
+                                faces: _faces, 
+                                pose: _pose,
+                                imageSize: controller.imageSize,
+                                rotation: controller.imageRotation,
+                                lensDirection: controller.lensDirection,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               )
             else
