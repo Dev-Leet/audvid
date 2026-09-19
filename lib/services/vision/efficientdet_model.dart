@@ -28,8 +28,10 @@ class EfficientDetModel {
     try {
       _interpreter = await Interpreter.fromAsset(assetPath);
       _labels = await _loadLabelMap();
-      final boxesShape = _interpreter!.getOutputTensor(0).shape;
-      if (boxesShape.length >= 2) _maxDetections = boxesShape[1];
+      final out0Shape = _interpreter!.getOutputTensor(0).shape;
+      final out1Shape = _interpreter!.getOutputTensor(1).shape;
+      logger.info('EfficientDetModel', 'Out0: $out0Shape, Out1: $out1Shape');
+      if (out0Shape.length >= 2) _maxDetections = out0Shape[1];
       logger.info('EfficientDetModel', 'Loaded, max detections=$_maxDetections');
     } catch (e) {
       logger.error('EfficientDetModel', 'load() failed', e);
@@ -67,11 +69,16 @@ class EfficientDetModel {
       // Output 1: bounding boxes (shape [1, 19206, 4])
       // It does NOT do NMS (Non-Maximum Suppression) internally. We must process the raw tensors.
       
+      final out0Shape = interpreter.getOutputTensor(0).shape;
+      
+      int boxesIndex = out0Shape.last == 4 ? 0 : 1;
+      int scoresIndex = out0Shape.last == 90 ? 0 : 1;
+
       final outputClassesScores = List.generate(1, (_) => List.generate(_maxDetections, (_) => List.filled(90, 0.0)));
       final outputBoxes = List.generate(1, (_) => List.generate(_maxDetections, (_) => List.filled(4, 0.0)));
 
       interpreter.runForMultipleInputs(
-          [input], {0: outputClassesScores, 1: outputBoxes});
+          [input], {scoresIndex: outputClassesScores, boxesIndex: outputBoxes});
 
       final results = <Detection>[];
       

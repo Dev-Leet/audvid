@@ -189,13 +189,16 @@ class VisionTestController {
 
         final rgb = await VisionPreprocessing.cameraImageToRgbBytesIsolate(
             frame, VisionPreprocessing.efficientDetInputSize, rotationDegrees: rotationCompensation);
+        if (_stopRequested) return;
         lastDetections = detector.infer(rgb);
+        if (_stopRequested) return;
         _detectionsController.add(lastDetections);
         framesProcessed++;
 
         final tracked = tracker.update(
           lastDetections.map((d) => (label: d.label, box: d.boundingBox)).toList(),
         );
+        if (_stopRequested) return;
         _tracksController.add(tracked);
 
         final heuristicEvidence = heuristics.extract(
@@ -220,6 +223,7 @@ class VisionTestController {
       // a genuinely working camera confirming nobody is around. Now a
       // stalled camera produces an explicit unavailable evidence item.
       if (framesProcessed == 0) {
+        if (_stopRequested) return;
         _tierAEvidenceController.add([
           Evidence(
             modality: Modality.vision,
@@ -236,10 +240,12 @@ class VisionTestController {
 
       final detectionEvidence = processor.processDetections(lastDetections, DateTime.now());
       final allEvidence = [detectionEvidence, ...aggregated.values];
+      if (_stopRequested) return;
       _tierAEvidenceController.add(allEvidence);
 
       tierAPerf.recordLatency(DateTime.now().difference(cycleStart).inMilliseconds);
     } catch (e) {
+      if (_stopRequested) return;
       logger.error('VisionTestController', 'Tier A cycle failed', e);
       tierAPerf.recordFailure();
       _statusController.add('Tier A error: $e');
@@ -289,7 +295,9 @@ class VisionTestController {
 
         final rgb = await VisionPreprocessing.cameraImageToRgbBytesIsolate(
             frame, MovinetStreamModel.inputFrameSize, rotationDegrees: rotationCompensation);
+        if (_stopRequested) return;
         lastResults = movinet.processFrame(rgb);
+        if (_stopRequested) return;
         _actionResultsController.add(lastResults);
         framesProcessed++;
 
@@ -301,6 +309,7 @@ class VisionTestController {
       // with no way to tell "still confidently benign" apart from "hasn't
       // actually run in several cycles". Now always emits per cycle.
       if (framesProcessed == 0) {
+        if (_stopRequested) return;
         _tierBEvidenceController.add(Evidence(
           modality: Modality.visionAction,
           timestamp: DateTime.now(),
@@ -314,9 +323,11 @@ class VisionTestController {
       }
 
       final evidence = processor.processAction(lastResults, DateTime.now());
+      if (_stopRequested) return;
       _tierBEvidenceController.add(evidence);
       tierBPerf.recordLatency(DateTime.now().difference(cycleStart).inMilliseconds);
     } catch (e) {
+      if (_stopRequested) return;
       logger.error('VisionTestController', 'Tier B cycle failed', e);
       tierBPerf.recordFailure();
       _statusController.add('Tier B error: $e');

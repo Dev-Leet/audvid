@@ -187,16 +187,24 @@ class _VisionTestScreenState extends State<VisionTestScreen> {
             ),
             const SizedBox(height: 12),
             if (cameraService.isActive && cameraService.rawController != null)
-              AspectRatio(
-                aspectRatio: cameraService.rawController!.value.aspectRatio,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraPreview(cameraService.rawController!),
-                    CustomPaint(
-                      painter: DetectionOverlayPainter(detections: _detections, tracks: _tracks),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  child: AspectRatio(
+                    aspectRatio: cameraService.rawController!.value.aspectRatio,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CameraPreview(cameraService.rawController!),
+                        CustomPaint(
+                          painter: DetectionOverlayPainter(detections: _detections, tracks: _tracks),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               )
             else

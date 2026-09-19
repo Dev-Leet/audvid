@@ -111,37 +111,28 @@ class _VisionCdTestScreenState extends State<VisionCdTestScreen> {
             ),
             const SizedBox(height: 12),
             if (cameraService.isActive && cameraService.rawController != null)
-              Container(
-                height: MediaQuery.of(context).size.height * 0.5, // Make preview taller
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade800, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: InteractiveViewer(
-                    panEnabled: true,
-                    minScale: 1.0,
-                    maxScale: 5.0,
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: cameraService.rawController!.value.aspectRatio,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            CameraPreview(cameraService.rawController!),
-                            CustomPaint(
-                              painter: MlkitOverlayPainter(
-                                faces: _faces, 
-                                pose: _pose,
-                                imageSize: controller.imageSize,
-                                rotation: controller.imageRotation,
-                                lensDirection: controller.lensDirection,
-                              ),
-                            ),
-                          ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  child: AspectRatio(
+                    aspectRatio: cameraService.rawController!.value.aspectRatio,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CameraPreview(cameraService.rawController!),
+                        CustomPaint(
+                          painter: MlkitOverlayPainter(
+                            faces: _faces,
+                            pose: _pose,
+                            imageSize: controller.imageSize,
+                            rotation: controller.imageRotation,
+                            lensDirection: controller.lensDirection,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),

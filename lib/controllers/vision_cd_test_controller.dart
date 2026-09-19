@@ -124,6 +124,7 @@ class VisionCdTestController {
     if (frame == null) {
        // Stalled camera
        if (_effectiveTierC) {
+          if (_stopRequested) return;
           _tierCEvidenceController.add(Evidence(
             modality: Modality.vision,
             timestamp: DateTime.now(),
@@ -135,6 +136,7 @@ class VisionCdTestController {
           tierCPerf.recordFailure();
        }
        if (_effectiveTierD) {
+          if (_stopRequested) return;
           _tierDEvidenceController.add(Evidence(
             modality: Modality.vision,
             timestamp: DateTime.now(),
@@ -147,6 +149,8 @@ class VisionCdTestController {
        }
        return;
     }
+
+    if (_stopRequested) return;
 
     final inputImage = MlkitInputImageConverter.convert(
       frame,
@@ -168,11 +172,14 @@ class VisionCdTestController {
       final cStart = DateTime.now();
       try {
         final faces = await faceService.detect(inputImage);
+        if (_stopRequested) return;
         _facesController.add(faces);
         final evidence = faceProcessor.process(faces, DateTime.now(), frame.width, frame.height);
+        if (_stopRequested) return;
         _tierCEvidenceController.add(evidence);
         tierCPerf.recordLatency(DateTime.now().difference(cStart).inMilliseconds);
       } catch (e) {
+        if (_stopRequested) return;
         tierCPerf.recordFailure();
         logger.error('VisionCdTestController', 'Tier C cycle failed', e);
       }
@@ -182,11 +189,14 @@ class VisionCdTestController {
       final dStart = DateTime.now();
       try {
         final pose = await poseService.detect(inputImage);
+        if (_stopRequested) return;
         _poseController.add(pose);
         final evidence = poseProcessor.process(pose, DateTime.now(), frame.width, frame.height);
+        if (_stopRequested) return;
         _tierDEvidenceController.add(evidence);
         tierDPerf.recordLatency(DateTime.now().difference(dStart).inMilliseconds);
       } catch (e) {
+        if (_stopRequested) return;
         tierDPerf.recordFailure();
         logger.error('VisionCdTestController', 'Tier D cycle failed', e);
       }
