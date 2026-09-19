@@ -13,32 +13,27 @@ class ActionClassResult {
 class MovinetStreamModel {
   static const String assetPath = 'assets/models/movinet_a2_stream_int8.tflite';
   static const String labelMapAssetPath = 'assets/config/kinetics600_labels.txt';
-  static const int inputFrameSize = 172;
+  
+  // The input frame size for this specific MoViNet export. 
+  // Adjusted from 172 to 224 based on the actual tensor shape logs.
+  static const int inputFrameSize = 224;
 
   final bool outputIsRawLogits;
-  final int imageInputTensorIndex;
-
-  /// Confirmed via TF Hub's official MoViNet-A2-Stream/Kinetics-600
-  /// classification tutorial: the classifier_head output is a plain
-  /// 600-length tensor with NO background/offset class (unlike COCO
-  /// detection models, which reserve index 0). The tutorial's own
-  /// jumping-jacks reference test indexes directly into the same ordered
-  /// label file used here with zero offset and gets the correct answer.
-  /// Kept as a parameter — not hardcoded — because that citation covers
-  /// the source SavedModel, not necessarily whatever specific .tflite
-  /// conversion you actually downloaded; run the calibration test below
-  /// before trusting it for your file.
   final int labelIndexOffset;
 
   Interpreter? _interpreter;
   Map<int, dynamic> _states = {};
+  
+  int _imageInputIndex = -1;
+  int _classifierOutputIndex = -1;
   List<int> _stateInputIndices = [];
+  List<int> _stateOutputIndices = [];
+  
   List<String> _labels = [];
   bool _tensorMappingVerifiedSafe = false;
 
   MovinetStreamModel({
     this.outputIsRawLogits = true,
-    this.imageInputTensorIndex = 0,
     this.labelIndexOffset = 0,
   });
 
@@ -54,50 +49,62 @@ class MovinetStreamModel {
       final outputCount = _interpreter!.getOutputTensors().length;
 
       logger.info('MovinetStreamModel',
-          'Loaded with $inputCount inputs / $outputCount outputs. VERIFY against model card.');
+          'Loaded with $inputCount inputs / $outputCount outputs. Discovering indices...');
+          
+      // Auto-discover the image input and state inputs
+      _stateInputIndices = [];
       for (var i = 0; i < inputCount; i++) {
         final t = _interpreter!.getInputTensor(i);
-        logger.debug('MovinetStreamModel', 'Input[$i] name=${t.name} shape=${t.shape}');
-      }
-      for (var i = 0; i < outputCount; i++) {
-        final t = _interpreter!.getOutputTensor(i);
-        logger.debug('MovinetStreamModel', 'Output[$i] name=${t.name} shape=${t.shape}');
+        // Look for the image tensor by shape: [1, 1, 224, 224, 3] or [1, 1, 172, 172, 3]
+        if (t.shape.length == 5 && t.shape.last == 3) {
+          _imageInputIndex = i;
+          logger.info('MovinetStreamModel', 'Found image input at index $i (shape: ${t.shape})');
+        } else {
+          _stateInputIndices.add(i);
+        }
       }
 
-      if (inputCount != outputCount) {
+      // Auto-discover the classifier output and state outputs
+      _stateOutputIndices = [];
+      for (var i = 0; i < outputCount; i++) {
+        final t = _interpreter!.getOutputTensor(i);
+        // Look for the classifier output by shape: [1, 600]
+        if (t.shape.length == 2 && t.shape.last >= 400 && t.shape.last <= 700) {
+          _classifierOutputIndex = i;
+          logger.info('MovinetStreamModel', 'Found classifier output at index $i (shape: ${t.shape})');
+        } else {
+          _stateOutputIndices.add(i);
+        }
+      }
+
+      if (_imageInputIndex == -1 || _classifierOutputIndex == -1) {
+        logger.error('MovinetStreamModel', 'Could not auto-discover image input or classifier output tensors. Refusing to run.');
+        _tensorMappingVerifiedSafe = false;
+        return;
+      }
+      
+      if (_stateInputIndices.length != _stateOutputIndices.length) {
         logger.error('MovinetStreamModel',
-            'Input tensor count ($inputCount) != output tensor count '
-            '($outputCount) — the assumed state-mirroring pattern does '
-            'NOT hold for this model file. Refusing to run to avoid '
-            'silently corrupting recurrent state. Provide a verified '
-            'explicit mapping before using this model.');
+            'State input count (${_stateInputIndices.length}) != state output count '
+            '(${_stateOutputIndices.length}). Refusing to run to avoid state corruption.');
         _tensorMappingVerifiedSafe = false;
         return;
       }
 
-      // NEW: verify the classifier output tensor's DTYPE and class count
-      // before trusting it. The asset is named "...int8.tflite" — if this
-      // model's output tensor is genuinely quantized (TensorType.int8 /
-      // uint8) rather than float32, every value in processFrame()'s
-      // List<double> output buffer would be the wrong buffer type
-      // entirely, independent of label ordering. Refuse to run rather
-      // than silently misinterpreting raw quantized integers as
-      // probabilities/logits.
-      final classifierTensor = _interpreter!.getOutputTensor(imageInputTensorIndex);
+      final classifierTensor = _interpreter!.getOutputTensor(_classifierOutputIndex);
       logger.info('MovinetStreamModel',
           'Classifier output tensor: type=${classifierTensor.type}, '
-          'shape=${classifierTensor.shape}');
+          'shape=${classifierTensor.shape}, '
+          'scale=${classifierTensor.params.scale}, '
+          'zeroPoint=${classifierTensor.params.zeroPoint}');
 
       final isFloatOutput = classifierTensor.type.toString().toLowerCase().contains('float');
       if (!isFloatOutput) {
         logger.error('MovinetStreamModel',
             'Classifier output tensor type is ${classifierTensor.type}, not '
-            'float32. This model\'s output is genuinely quantized — the '
-            'current float-based softmax/probability pipeline will '
-            'misinterpret raw integer values. Refusing to run until '
+            'float32. This model\'s output is genuinely quantized. Refusing to run until '
             'explicit dequantization (scale=${classifierTensor.params.scale}, '
-            'zeroPoint=${classifierTensor.params.zeroPoint}) is implemented '
-            'and verified.');
+            'zeroPoint=${classifierTensor.params.zeroPoint}) is implemented.');
         _tensorMappingVerifiedSafe = false;
         return;
       }
@@ -108,21 +115,12 @@ class MovinetStreamModel {
         logger.error('MovinetStreamModel',
             'Classifier output has $outputClassCount classes but the label '
             'file + offset implies $expectedCount ($_labels.length labels, '
-            'offset=$labelIndexOffset). These MUST match exactly or every '
-            'prediction will be mislabeled. Refusing to run.');
+            'offset=$labelIndexOffset). These MUST match exactly. Refusing to run.');
         _tensorMappingVerifiedSafe = false;
         return;
       }
 
-      logger.info('MovinetStreamModel',
-          'Verified: float32 output, $outputClassCount classes matches '
-          '$_labels.length labels + offset=$labelIndexOffset. Safe to run — '
-          'still recommend the jumping-jacks calibration test once before '
-          'trusting field results.');
-
-      _stateInputIndices = List.generate(inputCount, (i) => i)
-          .where((i) => i != imageInputTensorIndex)
-          .toList();
+      logger.info('MovinetStreamModel', 'Verified: float32 output, $outputClassCount classes matches labels. Safe to run.');
 
       _initializeStreamState();
       _tensorMappingVerifiedSafe = true;
@@ -168,33 +166,37 @@ class MovinetStreamModel {
 
     try {
       final imageInput = rgbFrame.reshape([1, 1, inputFrameSize, inputFrameSize, 3]);
-      final inputs = <int, Object>{imageInputTensorIndex: imageInput};
-      inputs.addAll(_states.map((k, v) => MapEntry(k, v)));
+      
+      // Assemble inputs in the exact order of interpreter.getInputTensors()
+      final inputs = List<Object>.filled(_interpreter!.getInputTensors().length, []);
+      inputs[_imageInputIndex] = imageInput;
+      for (final inIdx in _stateInputIndices) {
+        inputs[inIdx] = _states[inIdx];
+      }
 
       final outputs = <int, Object>{};
-      final logitsShape = interpreter.getOutputTensor(imageInputTensorIndex).shape;
-      outputs[imageInputTensorIndex] =
+      final logitsShape = interpreter.getOutputTensor(_classifierOutputIndex).shape;
+      outputs[_classifierOutputIndex] =
           List.filled(logitsShape.reduce((a, b) => a * b), 0.0).reshape(logitsShape);
-      for (final stateKey in _states.keys) {
-        final shape = interpreter.getOutputTensor(stateKey).shape;
-        outputs[stateKey] = List.filled(shape.reduce((a, b) => a * b), 0).reshape(shape);
+          
+      for (final outIdx in _stateOutputIndices) {
+        final shape = interpreter.getOutputTensor(outIdx).shape;
+        outputs[outIdx] = List.filled(shape.reduce((a, b) => a * b), 0).reshape(shape);
       }
 
-      interpreter.runForMultipleInputs(inputs.values.toList(), outputs);
+      interpreter.runForMultipleInputs(inputs, outputs);
 
-      for (final stateKey in _states.keys) {
-        _states[stateKey] = outputs[stateKey];
+      // Update state for the next frame using the parallel arrays
+      for (var i = 0; i < _stateInputIndices.length; i++) {
+        final inIdx = _stateInputIndices[i];
+        final outIdx = _stateOutputIndices[i];
+        _states[inIdx] = outputs[outIdx];
       }
 
-      final rawLogits = (outputs[imageInputTensorIndex] as List).cast<List>().first as List;
+      final rawLogits = (outputs[_classifierOutputIndex] as List).cast<List>().first;
       final logitsAsDoubles = rawLogits.map((v) => (v as num).toDouble()).toList();
       final probabilities = outputIsRawLogits ? _softmax(logitsAsDoubles) : logitsAsDoubles;
 
-      // labelIndexOffset applied here — confirmed 0 for the official
-      // source model (see class-level doc comment), but kept as an actual
-      // arithmetic offset rather than assumed away, so a differently
-      // exported .tflite file can be corrected with one constructor
-      // argument instead of a code change.
       final results = <ActionClassResult>[];
       for (var i = 0; i < probabilities.length; i++) {
         final labelIdx = i - labelIndexOffset;

@@ -9,18 +9,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  tflite_flutter: ^0.11.0
-  camera: ^0.11.0
-  record: ^5.1.2          # real mic capture with configurable PCM output
+  tflite_flutter: ^0.12.1
+  camera: ^0.12.1
+  record: ^7.1.1          # real mic capture with configurable PCM output
   permission_handler: ^11.3.1
-  battery_plus: ^6.0.2     # for the synthetic-battery UI to mimic real reads if desired
+  battery_plus: ^7.1.1     # for the synthetic-battery UI to mimic real reads if desired
   image: ^4.2.0            # YUV->RGB conversion (matches main app's vision_preprocessing.dart)
   path_provider: ^2.1.4    # AUDIT FIX (T-1): was imported by mic_capture_service.dart but never declared
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  lints: ^4.0.0
+  lints: ^6.1.0
 
 flutter:
   uses-material-design: true

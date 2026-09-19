@@ -14,8 +14,8 @@ class ModelStatusChip extends StatelessWidget {
     return Chip(
       avatar: Icon(isLoaded ? Icons.check_circle : Icons.error, color: color, size: 18),
       label: Text(label),
-      backgroundColor: color.withOpacity(0.1),
-      side: BorderSide(color: color.withOpacity(0.4)),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.4)),
     );
   }
 }

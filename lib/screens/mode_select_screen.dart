@@ -101,7 +101,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> with WidgetsBinding
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => AudioTestScreen(yamnet: widget.yamnet)),
-              ).then((_) => setState(() {})), // re-check status immediately on return
+              ).then((_) { if (mounted) setState(() {}); }), // re-check status immediately on return
             ),
             const SizedBox(height: 12),
             _ModeButton(
@@ -113,7 +113,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> with WidgetsBinding
                 MaterialPageRoute(
                     builder: (_) =>
                         VisionTestScreen(efficientDet: widget.efficientDet, movinet: widget.movinet)),
-              ).then((_) => setState(() {})),
+              ).then((_) { if (mounted) setState(() {}); }),
             ),
             const SizedBox(height: 12),
             _ModeButton(
@@ -129,7 +129,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> with WidgetsBinding
                     movinet: widget.movinet,
                   ),
                 ),
-              ).then((_) => setState(() {})),
+              ).then((_) { if (mounted) setState(() {}); }),
             ),
           ],
         ),

@@ -26,7 +26,7 @@ class EvidenceJsonPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -36,15 +36,22 @@ class EvidenceJsonPanel extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(fontWeight: FontWeight.bold, color: color),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text('${evidenceList.length} item(s)',
-                    style: TextStyle(fontSize: 12, color: color.withOpacity(0.8))),
+                    style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8))),
               ],
             ),
           ),

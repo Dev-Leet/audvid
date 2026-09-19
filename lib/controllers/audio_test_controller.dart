@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import '../core/models/evidence.dart';
 import '../core/models/test_config.dart';
 import '../core/utils/logger.dart';
@@ -109,7 +110,7 @@ class AudioTestController {
     }
   }
 
-  double _estimateLevel(pcmBytes) {
+  double _estimateLevel(Uint8List pcmBytes) {
     if (pcmBytes.isEmpty) return 0.0;
     double sumSquares = 0;
     final sampleCount = pcmBytes.length ~/ 2;
