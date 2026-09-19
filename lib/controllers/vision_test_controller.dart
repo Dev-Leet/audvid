@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/services.dart' show DeviceOrientation;
+import 'package:camera/camera.dart' show CameraLensDirection;
 import '../core/models/evidence.dart';
 import '../core/models/test_config.dart';
 import '../core/utils/logger.dart';
@@ -161,8 +163,32 @@ class VisionTestController {
         if (frame == null) break;
 
         final frameHeightPx = camera.previewHeightPx ?? frame.height;
-        final rgb = VisionPreprocessing.cameraImageToRgbBytes(
-            frame, VisionPreprocessing.efficientDetInputSize);
+        
+        // Calculate dynamic rotation angle for Tier A
+        int deviceOrientationDegrees = 0;
+        switch (camera.rawController!.value.deviceOrientation) {
+          case DeviceOrientation.portraitUp:
+            deviceOrientationDegrees = 0;
+            break;
+          case DeviceOrientation.landscapeLeft:
+            deviceOrientationDegrees = 90;
+            break;
+          case DeviceOrientation.portraitDown:
+            deviceOrientationDegrees = 180;
+            break;
+          case DeviceOrientation.landscapeRight:
+            deviceOrientationDegrees = 270;
+            break;
+        }
+        
+        final sensorOrientation = camera.rawController!.description.sensorOrientation;
+        final isFrontCamera = camera.rawController!.description.lensDirection == CameraLensDirection.front;
+        final rotationCompensation = isFrontCamera
+            ? (sensorOrientation + deviceOrientationDegrees) % 360
+            : (sensorOrientation - deviceOrientationDegrees + 360) % 360;
+
+        final rgb = await VisionPreprocessing.cameraImageToRgbBytesIsolate(
+            frame, VisionPreprocessing.efficientDetInputSize, rotationDegrees: rotationCompensation);
         lastDetections = detector.infer(rgb);
         _detectionsController.add(lastDetections);
         framesProcessed++;
@@ -238,8 +264,31 @@ class VisionTestController {
             .timeout(const Duration(seconds: 3), onTimeout: () => null);
         if (frame == null) break;
 
-        final rgb =
-            VisionPreprocessing.cameraImageToRgbBytes(frame, MovinetStreamModel.inputFrameSize);
+        // Calculate dynamic rotation angle for Tier B
+        int deviceOrientationDegrees = 0;
+        switch (camera.rawController!.value.deviceOrientation) {
+          case DeviceOrientation.portraitUp:
+            deviceOrientationDegrees = 0;
+            break;
+          case DeviceOrientation.landscapeLeft:
+            deviceOrientationDegrees = 90;
+            break;
+          case DeviceOrientation.portraitDown:
+            deviceOrientationDegrees = 180;
+            break;
+          case DeviceOrientation.landscapeRight:
+            deviceOrientationDegrees = 270;
+            break;
+        }
+        
+        final sensorOrientation = camera.rawController!.description.sensorOrientation;
+        final isFrontCamera = camera.rawController!.description.lensDirection == CameraLensDirection.front;
+        final rotationCompensation = isFrontCamera
+            ? (sensorOrientation + deviceOrientationDegrees) % 360
+            : (sensorOrientation - deviceOrientationDegrees + 360) % 360;
+
+        final rgb = await VisionPreprocessing.cameraImageToRgbBytesIsolate(
+            frame, MovinetStreamModel.inputFrameSize, rotationDegrees: rotationCompensation);
         lastResults = movinet.processFrame(rgb);
         _actionResultsController.add(lastResults);
         framesProcessed++;
