@@ -18,8 +18,11 @@ class PerfStatsBar extends StatelessWidget {
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
           Text('avg ${stats.avgLatencyMs.toStringAsFixed(0)}ms · last ${stats.lastLatencyMs}ms',
